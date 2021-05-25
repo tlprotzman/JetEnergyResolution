@@ -4,10 +4,16 @@
 #define JETENERGYRESOLUTION_H
 
 #include <fun4all/SubsysReco.h>
+#include <g4eval/JetEvalStack.h>
 
 #include <string>
 
+#include <TROOT.h>
+#include <TFile.h>
+#include <TTree.h>
+
 class PHCompositeNode;
+class JetEvalStack;
 
 class JetEnergyResolution : public SubsysReco
 {
@@ -29,7 +35,7 @@ class JetEnergyResolution : public SubsysReco
       database, because you know the run number. A place
       to book histograms which have to know the run number.
    */
-  int InitRun(PHCompositeNode *topNode) override;
+//   int InitRun(PHCompositeNode *topNode) override;
 
   /** Called for each event.
       This is where you do the real work.
@@ -37,20 +43,29 @@ class JetEnergyResolution : public SubsysReco
   int process_event(PHCompositeNode *topNode) override;
 
   /// Clean up internals after each event.
-  int ResetEvent(PHCompositeNode *topNode) override;
+//   int ResetEvent(PHCompositeNode *topNode) override;
 
   /// Called at the end of each run.
-  int EndRun(const int runnumber) override;
+//   int EndRun(const int runnumber) override;
 
   /// Called at the end of all processing.
   int End(PHCompositeNode *topNode) override;
 
   /// Reset
-  int Reset(PHCompositeNode * /*topNode*/) override;
+//   int Reset(PHCompositeNode * /*topNode*/) override;
 
-  void Print(const std::string &what = "ALL") const override;
+//   void Print(const std::string &what = "ALL") const override;
 
  private:
+ TFile *outfile;
+ TTree *recoJetTree;
+ JetEvalStack *jetEvalStack = nullptr;
+
+ // Jet variables
+ double recoPt, recoEnergy;
+ double truthPt, truthEnergy;
+ double dR; // For jet matching
+
 };
 
 #endif // JETENERGYRESOLUTION_H
