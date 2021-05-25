@@ -17,7 +17,18 @@ lib_LTLIBRARIES = \
   libJetEnergyResolution.la
 
 libJetEnergyResolution_la_SOURCES = \
+  $(ROOTSYS) \
   JetEnergyResolution.cc
+
+libJetEnergyResolution_la_LDFLAGS = \
+  -L$(libdir) \
+  -L$(OFFLINE_MAIN)/lib \
+  -lcalo_io \
+  -lfun4all \
+  -lg4detectors_io \
+  -lphg4hit \
+  -lg4dst \
+  -lg4eval
 
 libJetEnergyResolution_la_LIBADD = \
   -lphool \
