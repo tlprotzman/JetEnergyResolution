@@ -28,7 +28,7 @@ R__LOAD_LIBRARY(libJetEnergyResolution.so)
 
 int Fun4All_JetEnergyResolution(
     const int nEvents = 15,
-    const string &inputFile = "https://www.phenix.bnl.gov/WWW/publish/phnxbld/sPHENIX/files/sPHENIX_G4Hits_sHijing_9-11fm_00000_00010.root",
+    const string &inputFile = "data/DST_HFandJets_pythia6_ep_10x100-00000.root",
     const string &outputFile = "G4EICDetector.root",
     const string &embed_input_file = "https://www.phenix.bnl.gov/WWW/publish/phnxbld/sPHENIX/files/sPHENIX_G4Hits_sHijing_9-11fm_00000_00010.root",
     const int skip = 0,
@@ -60,7 +60,7 @@ int Fun4All_JetEnergyResolution(
   // the simulations step completely. The G4Setup macro is only loaded to get information
   // about the number of layers used for the cell reco code
   //
-  //Input::READHITS = true;
+  // Input::READHITS = true;
   INPUTREADHITS::filename[0] = inputFile;
   // if you use a filelist
   // INPUTREADHITS::listfile[0] = inputFile;
@@ -85,7 +85,7 @@ int Fun4All_JetEnergyResolution(
   //   Input::SARTRE = true;
 
   // Simple multi particle generator in eta/phi/pt ranges
-  Input::SIMPLE = true;
+  // Input::SIMPLE = true;
   // Input::SIMPLE_NUMBER = 2; // if you need 2 of them
   // Input::SIMPLE_VERBOSITY = 1;
 
@@ -102,7 +102,7 @@ int Fun4All_JetEnergyResolution(
   // And/Or read generated particles from file
 
   // eic-smear output
-  //  Input::READEIC = true;
+   Input::READEIC = true;
   INPUTREADEIC::filename = inputFile;
 
   // HepMC2 files

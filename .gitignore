@@ -1,1 +1,25 @@
+# Build directory
 /src/build
+
+# Build artifacts
+src/Makefile.in
+src/aclocal.m4
+src/config.guess
+src/config.sub
+src/autom4te.cache/
+src/configure
+src/depcomp
+src/install-sh
+src/ltmain.sh
+src/missing
+
+# Data directories
+macro/data
+macro/eval
+macro/filelist.txt
+macro/smallfilelist.txt
+
+
+# ide settings
+.vscode
+.idea
