@@ -22,19 +22,18 @@ const int e_max = 20;
 const int ge_max = 80;
 
 
-void plotJetEnergyScale() {
+void plotJetEnergyScale(std::string inFilePath = "smallfilelist.txt") {
     // Initialization, i.e. loading file list and creating histogram
     std::list<std::string> fileList;
 
-    // std::ifstream files("filelist.txt");
-    std::ifstream files("smallfilelist.txt");
+    std::ifstream files(inFilePath);
     std::string filePath;
     while (std::getline(files, filePath)) {
         fileList.push_back(filePath);
     }
 
-    TH2D *truthHist = new TH2D("energy_ratio, truth->reco", "", bins_2d, min_bin, e_max, bins_2d, min_bin, e_max);
-    TH2D *recoHist = new TH2D("energy_ratio, reco->truth", "", bins_2d, min_bin, e_max, bins_2d, min_bin, e_max);
+    TH2D *truthEnergyHist = new TH2D("energy_ratio, truth->reco", "", bins_2d, min_bin, e_max, bins_2d, min_bin, e_max);
+    TH2D *recoEnergyHist = new TH2D("energy_ratio, reco->truth", "", bins_2d, min_bin, e_max, bins_2d, min_bin, e_max);
     
     TH1D *truthGeHist = new TH1D("truth_ge", "", bins_1d, min_bin, ge_max);
     TH1D *truthEHist = new TH1D("truth_e", "", bins_1d, min_bin, e_max);
@@ -47,7 +46,7 @@ void plotJetEnergyScale() {
         TTree *truthJets = (TTree*) inFile->Get("ntp_truthjet");
         TTree *recoJets = (TTree*) inFile->Get("ntp_recojet");
         if (truthJets == nullptr || recoJets == nullptr) {
-            std::cout << "?!?!?!?" << std::endl;
+            std::cout << "Could not find jet tree" << std::endl;
         }
         float truthE, truthGe;
         float recoE, recoGe;
@@ -61,8 +60,8 @@ void plotJetEnergyScale() {
         for (uint32_t i = 0; i < truthJets->GetEntries(); i++) {
             truthJets->GetEntry(i);
             recoJets->GetEntry(i);
-            if (!std::isnan(truthGe) && !std::isnan(truthE)) {truthHist->Fill(truthGe, truthE);}
-            if (!std::isnan(recoGe) && !std::isnan(recoE))   {recoHist->Fill(recoGe, recoE);}
+            if (!std::isnan(truthGe) && !std::isnan(truthE)) {truthEnergyHist->Fill(truthGe, truthE);}
+            if (!std::isnan(recoGe) && !std::isnan(recoE))   {recoEnergyHist->Fill(recoGe, recoE);}
             truthGeHist->Fill(truthGe);
             truthEHist->Fill(truthE);
             recoGeHist->Fill(recoGe);
@@ -74,61 +73,60 @@ void plotJetEnergyScale() {
         inFile->Close();
     }
 
-    TCanvas *canvas = new TCanvas("canvas", "", 1000, 1000);
-    canvas->Divide(2, 2);
-    canvas->cd(1);
-    truthHist->Draw("colz");
-    truthHist->SetXTitle("ge");
-    truthHist->SetYTitle("e");
-    truthHist->SetTitle("ep, 10 GeV x 100 GeV, truth->reco");
-    line.Draw("lsame");
+    TCanvas *jetEnergy = new TCanvas("jet_energy", "", 1000, 1000);
+    jetEnergy->Divide(2, 2);
+    jetEnergy->cd(1);
+    truthEnergyHist->Draw("colz");
+    truthEnergyHist->SetXTitle("ge");
+    truthEnergyHist->SetYTitle("e");
+    truthEnergyHist->SetTitle("ep, 10 GeV x 100 GeV, truth->reco");
     gPad->SetLogz();
     
 
-    canvas->cd(2);
-    recoHist->Draw("colz");
-    recoHist->SetXTitle("ge");
-    recoHist->SetYTitle("e");
-    recoHist->SetTitle("ep, 10 GeV x 100 GeV, reco->truth");
+    jetEnergy->cd(2);
+    recoEnergyHist->Draw("colz");
+    recoEnergyHist->SetXTitle("ge");
+    recoEnergyHist->SetYTitle("e");
+    recoEnergyHist->SetTitle("ep, 10 GeV x 100 GeV, reco->truth");
     // line.Draw("lsame");
     gPad->SetLogz();
     
 
-    canvas->cd(3);
+    jetEnergy->cd(3);
     truthGeHist->SetLineColor(2);
     recoGeHist->SetLineColor(1);
 
-    THStack *stack = new THStack("ge", "");
-    stack->Add(truthGeHist);
-    stack->Add(recoGeHist);
-    stack->Draw("nostack hist lp");
+    THStack *geStack = new THStack("ge", "");
+    geStack->Add(truthGeHist);
+    geStack->Add(recoGeHist);
+    geStack->Draw("nostack hist lp");
     gPad->SetLogy();
-    stack->GetXaxis()->SetTitle("ge");
-    stack->GetYaxis()->SetTitle("counts");
-    stack->SetTitle("ge distribution");
+    geStack->GetXaxis()->SetTitle("ge");
+    geStack->GetYaxis()->SetTitle("counts");
+    geStack->SetTitle("ge distribution");
 
-    TLegend *legend = new TLegend(0.65, 0.55, 0.85, 0.75);
-    legend->AddEntry(truthGeHist, "truth->reco");
-    legend->AddEntry(recoGeHist, "reco->truth");
-    legend->Draw();
+    TLegend *geLegend = new TLegend(0.65, 0.55, 0.85, 0.75);
+    geLegend->AddEntry(truthGeHist, "truth->reco");
+    geLegend->AddEntry(recoGeHist, "reco->truth");
+    geLegend->Draw();
     
 
-    canvas->cd(4);
+    jetEnergy->cd(4);
     truthEHist->SetLineColor(2);
     recoEHist->SetLineColor(1);
 
-    THStack *stack2 = new THStack("e", "");
-    stack2->Add(truthEHist);
-    stack2->Add(recoEHist);
-    stack2->Draw("nostack hist lp");
+    THStack *eStack = new THStack("e", "");
+    eStack->Add(truthEHist);
+    eStack->Add(recoEHist);
+    eStack->Draw("nostack hist lp");
     gPad->SetLogy();
-    stack2->GetXaxis()->SetTitle("e");
-    stack2->GetYaxis()->SetTitle("counts");
-    stack2->SetTitle("e distribution");
+    eStack->GetXaxis()->SetTitle("e");
+    eStack->GetYaxis()->SetTitle("counts");
+    eStack->SetTitle("e distribution");
 
-    TLegend *legend2 = new TLegend(0.65, 0.55, 0.85, 0.75);
-    legend2->AddEntry(truthEHist, "truth->reco");
-    legend2->AddEntry(recoEHist, "reco->truth");
-    legend2->Draw();
-    canvas->Draw();
+    TLegend *eLegend = new TLegend(0.65, 0.55, 0.85, 0.75);
+    eLegend->AddEntry(truthEHist, "truth->reco");
+    eLegend->AddEntry(recoEHist, "reco->truth");
+    eLegend->Draw();
+    jetEnergy->Draw();
 }
