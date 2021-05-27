@@ -31,6 +31,7 @@ void plotJetEnergyScale(std::string inFilePath = "smallfilelist.txt") {
     while (std::getline(files, filePath)) {
         fileList.push_back(filePath);
     }
+    files.close();
 
     TH2D *truthEnergyHist = new TH2D("energy_ratio, truth->reco", "", bins_2d, min_bin, e_max, bins_2d, min_bin, e_max);
     TH2D *recoEnergyHist = new TH2D("energy_ratio, reco->truth", "", bins_2d, min_bin, e_max, bins_2d, min_bin, e_max);
@@ -50,8 +51,10 @@ void plotJetEnergyScale(std::string inFilePath = "smallfilelist.txt") {
         }
         float truthE, truthGe;
         float recoE, recoGe;
+        float truthJetEta; 
         truthJets->SetBranchAddress("e", &truthE);
         truthJets->SetBranchAddress("ge", &truthGe);
+        truthJets->SetBranchAddress("geta", &truthJetEta);
         recoJets->SetBranchAddress("e", &recoE);
         recoJets->SetBranchAddress("ge", &recoGe);
 
@@ -60,6 +63,7 @@ void plotJetEnergyScale(std::string inFilePath = "smallfilelist.txt") {
         for (uint32_t i = 0; i < truthJets->GetEntries(); i++) {
             truthJets->GetEntry(i);
             recoJets->GetEntry(i);
+            if (abs(truthJetEta) > 1.5) {continue;} // let's try only better matched jets? 
             if (!std::isnan(truthGe) && !std::isnan(truthE)) {truthEnergyHist->Fill(truthGe, truthE);}
             if (!std::isnan(recoGe) && !std::isnan(recoE))   {recoEnergyHist->Fill(recoGe, recoE);}
             truthGeHist->Fill(truthGe);
@@ -79,7 +83,7 @@ void plotJetEnergyScale(std::string inFilePath = "smallfilelist.txt") {
     truthEnergyHist->Draw("colz");
     truthEnergyHist->SetXTitle("ge");
     truthEnergyHist->SetYTitle("e");
-    truthEnergyHist->SetTitle("ep, 10 GeV x 100 GeV, truth->reco");
+    truthEnergyHist->SetTitle("ep, 10 GeV x 100 GeV, truth->reco, |eta| < 1.5");
     gPad->SetLogz();
     
 
@@ -87,7 +91,7 @@ void plotJetEnergyScale(std::string inFilePath = "smallfilelist.txt") {
     recoEnergyHist->Draw("colz");
     recoEnergyHist->SetXTitle("ge");
     recoEnergyHist->SetYTitle("e");
-    recoEnergyHist->SetTitle("ep, 10 GeV x 100 GeV, reco->truth");
+    recoEnergyHist->SetTitle("ep, 10 GeV x 100 GeV, reco->truth, |eta| < 1.5");
     // line.Draw("lsame");
     gPad->SetLogz();
     
@@ -129,4 +133,13 @@ void plotJetEnergyScale(std::string inFilePath = "smallfilelist.txt") {
     eLegend->AddEntry(recoEHist, "reco->truth");
     eLegend->Draw();
     jetEnergy->Draw();
+
+
+    // Some cleanup
+    delete truthEnergyHist;
+    delete recoEnergyHist;
+    delete truthGeHist;
+    delete truthEHist;
+    delete recoGeHist;
+    delete recoEHist;
 }
