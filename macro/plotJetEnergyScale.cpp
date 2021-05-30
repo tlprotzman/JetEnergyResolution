@@ -21,7 +21,7 @@
 
 // Hist Binning Parameters
 const int bins_1d = 80;
-const int bins_2d = 400;
+const int bins_2d = 100;
 const int bins_resolution = 20;
 const int min_bin = 0;
 const int e_max = 20;
@@ -50,7 +50,7 @@ void plotJetEnergyScale(std::string inFilePath = "smallfilelist.txt") {
     files.close();
 
     TH2D *truthEnergyHist = new TH2D("energy_ratio, truth->reco", "", bins_2d, min_bin, e_max, bins_2d, min_bin, e_max);
-    TH2D *normalizedEnergyHist = new TH2D("reco-truth/truth, truth->reco", "", bins_resolution, min_bin, e_max, bins_2d, -1 * e_max, e_max);
+    TH2D *normalizedEnergyHist = new TH2D("reco-truth/truth, truth->reco", "", bins_resolution, min_bin, e_max, bins_resolution, -4, e_max);
     TH2D *etaEnergyHist = new TH2D("eta vs energy, truth->reco", "", bins_2d, -4.5, 4.5, bins_2d, min_bin, ge_max);
     
     TH1D *truthGeHist = new TH1D("truth_ge", "", bins_1d, min_bin, ge_max);
@@ -117,21 +117,22 @@ void plotJetEnergyScale(std::string inFilePath = "smallfilelist.txt") {
         if (projection->GetBinContent(i) == 0) {
             continue;
         }
+        energy[fullBins] = profile->GetBinCenter(i);
+        // scale[fullBins] = (profile->GetBinContent(i) - profile->GetBinCenter(i)) / profile->GetBinCenter(i);
+        scale[fullBins] = profile->GetBinContent(i);
+        resolution[fullBins] = profile->GetBinError(i);
         fullBins++;
-        energy[i] = profile->GetBinCenter(i);
-        // scale[i] = (profile->GetBinContent(i) - profile->GetBinCenter(i)) / profile->GetBinCenter(i);
-        scale[i] = profile->GetBinContent(i);
-        resolution[i] = profile->GetBinError(i);
         std::cout << projection->GetBinContent(i) << "\t" << energy[i] << "\t" << scale[i] << std::endl;
     }
 
+    // gStyle->SetPadLeftMargin(0.15);
 
 
     // Plotting
     TCanvas *jetEnergy = new TCanvas("jet_energy", "", 1000, 1000);
     jetEnergy->Divide(2, 2);
     jetEnergy->cd(1);
-    TLatex *cutList = new TLatex(0.15, 0.8, Form("#splitline{|#eta|<%.1f}{r<%.1f}", maxEta, r));
+    TLatex *cutList = new TLatex(0.2, 0.8, Form("#splitline{|#eta|<%.1f}{r<%.1f}", maxEta, r));
     cutList->SetNDC();
     cutList->SetTextFont(43);
     cutList->SetTextSize(20);
@@ -140,7 +141,9 @@ void plotJetEnergyScale(std::string inFilePath = "smallfilelist.txt") {
     truthEnergyHist->SetXTitle("ge");
     truthEnergyHist->SetYTitle("e");
     truthEnergyHist->SetTitle("ep, 10 GeV x 100 GeV, truth->reco, |eta| < 1.5");
+    truthEnergyHist->SetStats(false);
     gPad->SetLogz();
+    
     
 
     jetEnergy->cd(2);
@@ -149,6 +152,7 @@ void plotJetEnergyScale(std::string inFilePath = "smallfilelist.txt") {
         normalizedEnergyHist->SetXTitle("ge");
         normalizedEnergyHist->SetYTitle("(reco - truth) / truth");
         normalizedEnergyHist->SetTitle("ep, 10x100 GeV, truth->reco, Jet Scale");
+        normalizedEnergyHist->SetStats(false);
     }
     else if (secondPlot == "etaEnergyHist") {
         gStyle->SetStatX(.4);
@@ -157,12 +161,13 @@ void plotJetEnergyScale(std::string inFilePath = "smallfilelist.txt") {
         etaEnergyHist->SetXTitle("eta");
         etaEnergyHist->SetYTitle("ge");
         etaEnergyHist->SetTitle("ep, 10x100 GeV, truth->reco, Truth Energy vs Eta");
+        etaEnergyHist->SetStats(false);
 
     }
     else if (secondPlot == "energyScale") {
         profile->Draw("");
         profile->SetXTitle("ge");
-        profile->SetYTitle("counts");
+        profile->SetYTitle("(reco-truth)/truth");
         profile->SetTitle("Profile on X");
     }
     gPad->SetLogz();
@@ -171,8 +176,9 @@ void plotJetEnergyScale(std::string inFilePath = "smallfilelist.txt") {
     jetEnergy->cd(3);
     TGraph *jetScale = new TGraph(fullBins, energy, scale);
     jetScale->GetXaxis()->SetTitle("Energy");
-    jetScale->GetYaxis()->SetTitle("Scale");
+    jetScale->GetYaxis()->SetTitle("Scale (Mean((reco-truth)/truth))");
     jetScale->SetTitle("Jet Scale");
+    jetScale->SetMarkerSize(2.5);
     // jetScale->GetXaxis()->SetRangeUser(0, 20);
     jetScale->GetYaxis()->SetRangeUser(-0.5, 0.5);
     jetScale->Draw("A*");
@@ -182,9 +188,10 @@ void plotJetEnergyScale(std::string inFilePath = "smallfilelist.txt") {
     jetEnergy->cd(4);
     TGraph *jetResolution = new TGraph(fullBins, energy, resolution);
     jetResolution->GetXaxis()->SetTitle("Energy");
-    jetResolution->GetYaxis()->SetTitle("Resolution");
+    jetResolution->GetYaxis()->SetTitle("Resolution (RMS((reco-truth)/truth))"); 
     jetResolution->SetTitle("Jet Resolution");
-    // jetResolution->GetYaxis()->SetRangeUser(-0.5, 0.5);
+    jetResolution->SetMarkerSize(2.5);
+    jetResolution->GetYaxis()->SetRangeUser(-0.1, 1);
     jetResolution->Draw("A*");
 
     jetEnergy->SaveAs("canvas.png");
