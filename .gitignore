@@ -18,7 +18,12 @@ macro/data
 macro/eval
 macro/filelist.txt
 macro/smallfilelist.txt
+macro/fileforwardlist.txt
+macro/fullfilelist.txt
+macro/smallfileforwardlist.txt
 
+# Output
+macro/canvas.png
 
 # ide settings
 .vscode

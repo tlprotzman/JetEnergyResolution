@@ -22,32 +22,37 @@
 // Hist Binning Parameters
 const int bins_1d = 80;
 const int bins_2d = 100;
-const int bins_resolution = 20;
+const int bins_resolution = 30;
 const int min_bin = 0;
-const int e_max = 20;
+const int e_max = 30;
 const int ge_max = 80;
 
 // Cuts
-const double minEta = -1.5;
-const double maxEta = 1.5;
-const double r = 0.4;   // r^2 < dphi^2 + deta^2
+const double r = 0.5;   // r^2 < dphi^2 + deta^2
 const double r2 = r * r;
 
 // Plotting
 // const std::string secondPlot("energyScale");
 const std::string secondPlot("normalizedEnergyHist");
+// const std::string secondPlot("etaEnergyHist");
 
 
-void plotJetEnergyScale(std::string inFilePath = "smallfilelist.txt") {
+void plotJetEnergyScale(std::string centralJets = "", std::string forwardJets = "") {
     // Initialization, i.e. loading file list and creating histogram
     std::list<std::string> fileList;
 
-    std::ifstream files(inFilePath);
+    std::ifstream centralFiles(centralJets);        // Load central jets
     std::string filePath;
-    while (std::getline(files, filePath)) {
+    while (std::getline(centralFiles, filePath)) {
         fileList.push_back(filePath);
     }
-    files.close();
+    centralFiles.close();
+    
+    std::ifstream forwardFiles(forwardJets);        // Load forward jets
+    while (std::getline(forwardFiles, filePath)) {
+        fileList.push_back(filePath);
+    }
+    forwardFiles.close();
 
     TH2D *truthEnergyHist = new TH2D("energy_ratio, truth->reco", "", bins_2d, min_bin, e_max, bins_2d, min_bin, e_max);
     TH2D *normalizedEnergyHist = new TH2D("reco-truth/truth, truth->reco", "", bins_resolution, min_bin, e_max, bins_resolution, -4, e_max);
@@ -78,10 +83,6 @@ void plotJetEnergyScale(std::string inFilePath = "smallfilelist.txt") {
         for (uint32_t i = 0; i < jets->GetEntries(); i++) {
             jets->GetEntry(i);
 
-            // Cuts
-            if (truthEta < minEta || truthEta > maxEta) { // Only |eta| < 1.5 is reconstructed
-                continue;
-            }
             float dPhi = truthPhi - recoPhi;
             float dEta = truthEta - recoEta;
             if (r2 < dPhi * dPhi + dEta * dEta) {
@@ -132,7 +133,7 @@ void plotJetEnergyScale(std::string inFilePath = "smallfilelist.txt") {
     TCanvas *jetEnergy = new TCanvas("jet_energy", "", 1000, 1000);
     jetEnergy->Divide(2, 2);
     jetEnergy->cd(1);
-    TLatex *cutList = new TLatex(0.2, 0.8, Form("#splitline{|#eta|<%.1f}{r<%.1f}", maxEta, r));
+    TLatex *cutList = new TLatex(0.2, 0.8, Form("r<%.1f", r));
     cutList->SetNDC();
     cutList->SetTextFont(43);
     cutList->SetTextSize(20);
@@ -180,7 +181,7 @@ void plotJetEnergyScale(std::string inFilePath = "smallfilelist.txt") {
     jetScale->SetTitle("Jet Scale");
     jetScale->SetMarkerSize(2.5);
     // jetScale->GetXaxis()->SetRangeUser(0, 20);
-    jetScale->GetYaxis()->SetRangeUser(-0.5, 0.5);
+    // jetScale->GetYaxis()->SetRangeUser(-0.1, 0.2);
     jetScale->Draw("A*");
 
 
