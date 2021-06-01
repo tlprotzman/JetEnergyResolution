@@ -12,8 +12,7 @@ This code intends to study properties of jet detection in the [ECCE](https://www
 * Jet Spatially
     * Scale
     * Resolution
-    * These metrics are functionally equivalent to those described for jet energy, only now we are interested in the jets pseudorapidity.  
-    * See figure 8.44 in the [Yellow Report](https://arxiv.org/abs/2103.05419)
+    * These metrics are functionally equivalent to those described for jet energy, only now we are interested in the jets eta and phi component.  
 
 * Efficiency
     * Not yet started
