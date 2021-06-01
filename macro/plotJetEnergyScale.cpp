@@ -147,7 +147,7 @@ void plotJetEnergyScale(std::string centralJets = "", std::string forwardJets = 
     cutList->Draw();
     truthEnergyHist->SetXTitle("ge");
     truthEnergyHist->SetYTitle("e");
-    truthEnergyHist->SetTitle("ep, 10 GeV x 100 GeV, truth->reco, |eta| < 1.5");
+    truthEnergyHist->SetTitle("ep, 10 GeV x 100 GeV");
     truthEnergyHist->SetStats(false);
     gPad->SetLogz();
     
@@ -158,7 +158,7 @@ void plotJetEnergyScale(std::string centralJets = "", std::string forwardJets = 
         normalizedEnergyHist->Draw("colz");
         normalizedEnergyHist->SetXTitle("ge");
         normalizedEnergyHist->SetYTitle("(reco - truth) / truth");
-        normalizedEnergyHist->SetTitle("ep, 10x100 GeV, truth->reco, Jet Scale");
+        normalizedEnergyHist->SetTitle("ep, 10x100 GeV, Jet Scale");
         normalizedEnergyHist->SetStats(false);
     }
     else if (secondPlot == "etaEnergyHist") {
@@ -181,10 +181,11 @@ void plotJetEnergyScale(std::string centralJets = "", std::string forwardJets = 
     
 
     jetEnergy->cd(3);
+    gPad->SetLeftMargin(0.15);
     TGraph *jetScale = new TGraph(fullBins, energy, scale);
     jetScale->GetXaxis()->SetTitle("Energy");
     jetScale->GetYaxis()->SetTitle("Scale (Mean((reco-truth)/truth))");
-    jetScale->SetTitle("Jet Scale");
+    jetScale->SetTitle("Jet Energy Scale");
     jetScale->SetMarkerSize(2.5);
     // jetScale->GetXaxis()->SetRangeUser(0, 20);
     // jetScale->GetYaxis()->SetRangeUser(-0.1, 0.2);
@@ -196,7 +197,7 @@ void plotJetEnergyScale(std::string centralJets = "", std::string forwardJets = 
     TGraph *jetResolution = new TGraph(fullBins, energy, resolution);
     jetResolution->GetXaxis()->SetTitle("Energy");
     jetResolution->GetYaxis()->SetTitle("Resolution (RMS((reco-truth)/truth))"); 
-    jetResolution->SetTitle("Jet Resolution");
+    jetResolution->SetTitle("Jet Energy Resolution");
     jetResolution->SetMarkerSize(2.5);
     jetResolution->GetYaxis()->SetRangeUser(-0.1, 1);
     jetResolution->Draw("A*");
