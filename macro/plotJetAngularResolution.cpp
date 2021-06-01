@@ -26,13 +26,13 @@ const int bin_resolution = 15;
 const double phiRange = TMath::Pi() + 0.1;
 const double truthEtaRange = 5;
 const double recoEtaRange = 5;
-
+const double r = 0.4;
 
 const double phiMin = -1 * phiRange;
 const double phiMax = phiRange;
-const double truthEtaMin = -1.5;//-1 * truthEtaRange;
+const double truthEtaMin = -1.7;//-1 * truthEtaRange;
 const double truthEtaMax = 4;//truthEtaRange;
-const double recoEtaMin = -1.5;//-1 * recoEtaRange;
+const double recoEtaMin = -1.7;//-1 * recoEtaRange;
 const double recoEtaMax = 4;//recoEtaRange;
 
 
@@ -91,7 +91,7 @@ void plotJetAngularResolution(std::string inFilePath = "smallfilelist.txt") {
             if (dPhi < -1 * TMath::Pi()) {
                 dPhi += TMath::TwoPi();
             }
-            if (0.4 * 0.4 < dEta * dEta + dPhi * dPhi) {
+            if (r * r < dEta * dEta + dPhi * dPhi) {
                 continue;
             }
             // if (abs(truthEta) > 1.5) {
@@ -168,6 +168,7 @@ void plotJetAngularResolution(std::string inFilePath = "smallfilelist.txt") {
     etaHist2d->SetXTitle("truth eta");
     etaHist2d->SetYTitle("reco eta");
     etaHist2d->SetTitle("eta, 10x100 GeV");
+    etaHist2d->SetStats(false);
     gPad->SetLogz();
     
 
@@ -177,8 +178,9 @@ void plotJetAngularResolution(std::string inFilePath = "smallfilelist.txt") {
     // normalizedEtaHist->SetYTitle("(reco - truth) / truth eta");
     phiHist2d->Draw("colz");
     phiHist2d->SetXTitle("truth phi");
-    phiHist2d->SetXTitle("reco phi");
+    phiHist2d->SetYTitle("reco phi");
     phiHist2d->SetTitle("phi, 10x100 GeV");
+    phiHist2d->SetStats(false);
     gPad->SetLogz();
     
 
@@ -247,9 +249,10 @@ void plotJetAngularResolution(std::string inFilePath = "smallfilelist.txt") {
         etaMGraph->Add(etaResolutionGraph);
         etaMGraph->SetTitle("Eta Scale and Resolution");
         etaMGraph->GetXaxis()->SetTitle("Eta");
+        etaMGraph->GetYaxis()->SetRangeUser(-0.15,0.2);
         etaMGraph->Draw("ap");
 
-        TLegend *etaLegend = new TLegend(0, 0);
+        TLegend *etaLegend = new TLegend();
         etaLegend->AddEntry(etaScaleGraph);
         etaLegend->AddEntry(etaResolutionGraph);
         etaLegend->Draw();
@@ -272,7 +275,7 @@ void plotJetAngularResolution(std::string inFilePath = "smallfilelist.txt") {
         phiResolutionGraph->SetMarkerStyle(2);
         phiResolutionGraph->SetMarkerColor(kRed);
         phiResolutionGraph->SetMarkerSize(2.5);
-        // phiResolutionGraph->GetYaxis()->SetRangeUser(-0.1, 1);
+        phiResolutionGraph->GetYaxis()->SetRangeUser(-0.2,0.2);
         // phiResolutionGraph->Draw("A* same");
 
         TMultiGraph *phiMGraph = new TMultiGraph();
@@ -280,6 +283,7 @@ void plotJetAngularResolution(std::string inFilePath = "smallfilelist.txt") {
         phiMGraph->Add(phiResolutionGraph);
         phiMGraph->SetTitle("Phi Scale and Resolution");
         phiMGraph->GetXaxis()->SetTitle("Phi");
+        phiMGraph->GetYaxis()->SetRangeUser(-0.15,0.2);
         phiMGraph->Draw("ap");
 
         TLegend *phiLegend = new TLegend();
