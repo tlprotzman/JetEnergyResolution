@@ -83,8 +83,14 @@ void plotJetEnergyScale(std::string centralJets = "", std::string forwardJets = 
         for (uint32_t i = 0; i < jets->GetEntries(); i++) {
             jets->GetEntry(i);
 
-            float dPhi = truthPhi - recoPhi;
             float dEta = truthEta - recoEta;
+            float dPhi = truthPhi - recoPhi;
+            if (dPhi > TMath::Pi()) {
+                dPhi -= TMath::TwoPi();
+            }
+            if (dPhi < -1 * TMath::Pi()) {
+                dPhi += TMath::TwoPi();
+            }
             if (r2 < dPhi * dPhi + dEta * dEta) {
                 continue;
             }
