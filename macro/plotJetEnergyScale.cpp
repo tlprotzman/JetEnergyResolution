@@ -21,7 +21,7 @@
 
 // Hist Binning Parameters
 const int bins_1d = 80;
-const int bins_2d = 100;
+const int bins_2d = 30;
 const int bins_resolution = 30;
 const int min_bin = 0;
 const int e_max = 30;
@@ -129,7 +129,7 @@ void plotJetEnergyScale(std::string centralJets = "", std::string forwardJets = 
         scale[fullBins] = profile->GetBinContent(i);
         resolution[fullBins] = profile->GetBinError(i);
         fullBins++;
-        std::cout << projection->GetBinContent(i) << "\t" << energy[i] << "\t" << scale[i] << std::endl;
+        // std::cout << projection->GetBinContent(i) << "\t" << energy[i] << "\t" << scale[i] << std::endl;
     }
 
     // gStyle->SetPadLeftMargin(0.15);
