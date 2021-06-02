@@ -180,7 +180,6 @@ void plotJetEnergyScale(std::string centralJets = "", std::string forwardJets = 
     
 
     jetEnergy->cd(3);
-    gPad->SetLeftMargin(0.15);
     TGraph *jetScale = new TGraph(fullBins, energy, scale);
     jetScale->GetXaxis()->SetTitle("Energy");
     jetScale->GetYaxis()->SetTitle("Scale (Mean((reco-truth)/truth))");

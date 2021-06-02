@@ -156,7 +156,10 @@ void plotJetAngularResolution(std::string inFilePath = "smallfilelist.txt") {
     // Drawing
     gStyle->SetStatX(0.9);
     gStyle->SetStatY(0.42);
-    gStyle->SetPadLeftMargin(0.15);
+    gStyle->SetPadRightMargin(0.12);
+    gStyle->SetPadLeftMargin(0.12);
+    gStyle->SetPadTopMargin(0.12);
+    gStyle->SetPadBottomMargin(0.12);
     TCanvas *jetEnergy = new TCanvas("jet_energy", "", 1000, 1000);
     jetEnergy->Divide(2, 2);
     jetEnergy->cd(1);
