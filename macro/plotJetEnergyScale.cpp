@@ -136,15 +136,14 @@ void plotJetEnergyScale(std::string centralJets = "", std::string forwardJets = 
 
 
     // Plotting
+    gStyle->SetPadRightMargin(0.12);
+    gStyle->SetPadLeftMargin(0.12);
+    gStyle->SetPadTopMargin(0.12);
+    gStyle->SetPadBottomMargin(0.12);
     TCanvas *jetEnergy = new TCanvas("jet_energy", "", 1000, 1000);
     jetEnergy->Divide(2, 2);
     jetEnergy->cd(1);
-    TLatex *cutList = new TLatex(0.2, 0.8, Form("r<%.1f", r));
-    cutList->SetNDC();
-    cutList->SetTextFont(43);
-    cutList->SetTextSize(20);
     truthEnergyHist->Draw("colz");
-    cutList->Draw();
     truthEnergyHist->SetXTitle("ge");
     truthEnergyHist->SetYTitle("e");
     truthEnergyHist->SetTitle("ep, 10 GeV x 100 GeV");
@@ -207,7 +206,6 @@ void plotJetEnergyScale(std::string centralJets = "", std::string forwardJets = 
 
     // Some cleanup
     delete jetEnergy;
-    delete cutList;
     delete jetScale;
     delete truthEnergyHist;
     delete truthGeHist;
