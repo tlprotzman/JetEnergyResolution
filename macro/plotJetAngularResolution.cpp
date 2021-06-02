@@ -87,9 +87,11 @@ void plotJetAngularResolution(std::string inFilePath = "smallfilelist.txt") {
             dPhi = truthPhi - recoPhi;
             if (dPhi > TMath::Pi()) {
                 dPhi -= TMath::TwoPi();
+                recoPhi += TMath::TwoPi();
             }
             if (dPhi < -1 * TMath::Pi()) {
                 dPhi += TMath::TwoPi();
+                recoPhi -= TMath::TwoPi();
             }
             if (r * r < dEta * dEta + dPhi * dPhi) {
                 continue;
@@ -297,7 +299,8 @@ void plotJetAngularResolution(std::string inFilePath = "smallfilelist.txt") {
 
     }
     // jetEnergy->Draw();
-    jetEnergy->SaveAs("canvas.png");
+    jetEnergy->SaveAs("jetAngularScale.png");
+    jetEnergy->SaveAs("jetAngularScale.c");
 
 
     // Some cleanup
