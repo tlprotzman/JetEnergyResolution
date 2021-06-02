@@ -6,6 +6,8 @@
 #include <TCanvas.h>
 #include <TStyle.h>
 #include <TGraph.h>
+#include <THStack.h>
+#include <TLegend.h>
 
 #include <list>
 #include <string>
@@ -60,7 +62,7 @@ void jetEfficiency(std::string jets = "") {
 
     // 1D histograms to store number of truth jets and reco jets for each energy bin
     TH1F *truthEnergy = new TH1F("truth_energy", "", num_bins, min_energy, max_energy);
-    TH1F *recoEnergy  = new TH1F("reco_energy",  "", num_bins, min_energy, max_energy);
+    TH1F *matchedEnergy  = new TH1F("reco_energy",  "", num_bins, min_energy, max_energy);
 
     // Loop over all the files
     for (std::list<std::string>::iterator iter = filePaths.begin(); iter != filePaths.end(); ++iter) {
@@ -87,15 +89,15 @@ void jetEfficiency(std::string jets = "") {
 
         for (uint32_t i = 0; i < jets->GetEntries(); i++) {
             jets->GetEntry(i);
-            // Do we filter on R for efficiency? Probably
+            truthEnergy->Fill(truthE);
             if (std::isnan(truthE) || std::isnan(recoE)) {
                 continue;
             }
-            if (r2 < calculateDistance(pos)) {
-                continue;
-            }
-            truthEnergy->Fill(truthE);
-            recoEnergy->Fill(recoE);
+            // Do we filter on R for efficiency? Probably
+            // if (r2 < calculateDistance(pos)) {
+            //     continue;
+            // }
+            matchedEnergy->Fill(truthE);
             // std::cout << truthE << "\t" << recoE << std::endl;
             // std::cout << pos[0] << "\t" << pos[1] << std::endl;
         }
@@ -103,37 +105,63 @@ void jetEfficiency(std::string jets = "") {
     }
 
     // Calculate efficiencies
-    // efficiency = (num reco) / (num truth)
+    // efficiency = (num matched) / (num truth)
     float *energy = (float*)malloc(num_bins * sizeof(float));
     float *efficiency = (float*)malloc(num_bins * sizeof(float));
     uint32_t fullBins = 0;
     for (uint32_t i = 1; i < num_bins; i++) {
-        if (truthEnergy->GetBinContent(i) == 0) {
+        if (truthEnergy->GetBinContent(i) == 0 || matchedEnergy->GetBinContent(i) == 0) {
             continue;
         }
         energy[fullBins] = truthEnergy->GetBinCenter(i);
-        efficiency[fullBins] = recoEnergy->GetBinContent(i) / truthEnergy->GetBinContent(i);
+        efficiency[fullBins] = matchedEnergy->GetBinContent(i) / truthEnergy->GetBinContent(i);
+        std::cout << matchedEnergy->GetBinContent(i) << "\t" << truthEnergy->GetBinContent(i) << std::endl;
         fullBins++;
     }
     std::cout << "filled " << fullBins << " bins" << std::endl;
 
     // plotting
-    TCanvas *efficiencyCanvas = new TCanvas("jet_efficiency", "", 1000, 1000);
-    efficiencyCanvas->Divide(3, 1);
+    TCanvas *efficiencyCanvas = new TCanvas("jet_efficiency", "", 1000, 500);
+    efficiencyCanvas->Divide(2, 1);
 
     efficiencyCanvas->cd(1);
-    truthEnergy->Draw("colz");
+    THStack *stack = new THStack("jet_energy", "");
+    truthEnergy->SetLineColor(kRed);
+    matchedEnergy->SetLineColor(kBlue);
+    stack->Add(truthEnergy);
+    stack->Add(matchedEnergy);
+    stack->Draw("nostack");
+    stack->SetTitle("Jet Energy");
+    stack->GetXaxis()->SetTitle("Jet Energy");
+    stack->GetYaxis()->SetTitle("Counts");
+    TLegend *legend = new TLegend(0.50, 0.80, 0.9, 0.9);
+    legend->AddEntry(truthEnergy, "Truth Jets");
+    legend->AddEntry(matchedEnergy, "Matched Jets");
+    legend->SetTextSize(0.035);
+    legend->Draw();
+    std::cout << "integrals: "  << truthEnergy->Integral() << "\t" << matchedEnergy->Integral() << std::endl;
+    gPad->SetLogy();
+    
 
     efficiencyCanvas->cd(2);
-    recoEnergy->Draw("colz");
-
-    efficiencyCanvas->cd(3);
-    gPad->SetLeftMargin(0.15);
+    // gPad->SetLeftMargin(0.1);
     TGraph *efficiencyGraph = new TGraph(fullBins, energy, efficiency);
     efficiencyGraph->SetTitle("Jet Efficiency");
     efficiencyGraph->GetXaxis()->SetTitle("Jet Energy");
     efficiencyGraph->GetYaxis()->SetTitle("Efficiency");
     efficiencyGraph->Draw("A*");
-    gPad->SetLogy();
-    // efficiencyGraph->SaveAs("canvas.png");
+    // gPad->SetLogy();
+    efficiencyCanvas->SaveAs("canvas.png");
+
+    delete truthEnergy;
+    delete matchedEnergy;
+    delete efficiencyCanvas;
+    delete efficiencyGraph;
+    delete stack;
+    delete legend;
+
+    free(energy);
+    free(efficiency);
+
+
 }
