@@ -16,12 +16,7 @@ src/missing
 # Data directories
 macro/data
 macro/eval
-macro/filelist.txt
-macro/smallfilelist.txt
-macro/fileforwardlist.txt
-macro/fullfilelist.txt
-macro/smallfileforwardlist.txt
-macro/fwdfilelist.txt
+macro/*filelist.txt
 
 # Output
 macro/canvas.png

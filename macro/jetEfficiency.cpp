@@ -32,6 +32,8 @@ const int CENTRAL = 0;
 const int FORWARD = 1;
 const int BACKWARD = 2;
 
+const int NUM_REGIONS = 3;
+
 
 struct jetData {
     bool loaded = false;
@@ -46,6 +48,7 @@ struct jetData {
     float *efficiency;
     TGraph *efficiencyGraph;
     int color;
+    int secondaryColor;
     int marker;
     float markerSize;
 };
@@ -85,9 +88,9 @@ float calculateDistance(float *pos) {
     return dEta *dEta + dPhi * dPhi;
 }
 
-void jetEfficiency(std::string centralFileList = "", std::string forwardFileList = "", std::string backwardFileLIst = "") {
+void jetEfficiency(std::string centralFileList = "", std::string forwardFileList = "", std::string backwardFileList = "") {
     // Load files
-    struct jetData jets[3];
+    struct jetData jets[NUM_REGIONS];
     if (centralFileList != "") {
         jets[CENTRAL].loaded = true;
         jets[CENTRAL].descriptiveName = std::string("Central");
@@ -95,6 +98,7 @@ void jetEfficiency(std::string centralFileList = "", std::string forwardFileList
         jets[CENTRAL].minEta = -1.5;
         jets[CENTRAL].maxEta = 1.5;
         jets[CENTRAL].color = kRed;
+        jets[CENTRAL].secondaryColor = kMagenta;
         jets[CENTRAL].marker = 21;
         jets[CENTRAL].markerSize = 1;
     }
@@ -105,12 +109,24 @@ void jetEfficiency(std::string centralFileList = "", std::string forwardFileList
         jets[FORWARD].minEta = 1.5;
         jets[FORWARD].maxEta = 3;
         jets[FORWARD].color = kBlue;
+        jets[FORWARD].secondaryColor = kCyan;
         jets[FORWARD].marker = 22;
         jets[FORWARD].markerSize = 1.4;
     }
+    if (backwardFileList != "") {
+        jets[BACKWARD].loaded = true;
+        jets[BACKWARD].descriptiveName = std::string("Backward");
+        std::cout << "loaded " << readFileList(backwardFileList, jets[BACKWARD].files) << " files in backward region" << std::endl;
+        jets[BACKWARD].minEta = 1.5;    // THESE VALUES ARE NOT SET
+        jets[BACKWARD].maxEta = 3;
+        jets[BACKWARD].color = kGreen + 2;
+        jets[BACKWARD].secondaryColor = kYellow + 1;
+        jets[BACKWARD].marker = 23;
+        jets[BACKWARD].markerSize = 1.4;
+    }
 
     // Loop over all the files
-    for (uint8_t jetRegion = 0; jetRegion < 3; jetRegion++) {
+    for (uint8_t jetRegion = 0; jetRegion < NUM_REGIONS; jetRegion++) {
         if (!jets[jetRegion].loaded) {  // Skip over regions we aren't studying
             continue;
         }
@@ -166,7 +182,7 @@ void jetEfficiency(std::string centralFileList = "", std::string forwardFileList
 
     // Calculate efficiencies
     // efficiency = (num matched) / (num truth)
-    for (uint8_t jetRegion = 0; jetRegion < 3; jetRegion++) {
+    for (uint8_t jetRegion = 0; jetRegion < NUM_REGIONS; jetRegion++) {
         if (!jets[jetRegion].loaded) {
             continue;
         }
@@ -179,11 +195,11 @@ void jetEfficiency(std::string centralFileList = "", std::string forwardFileList
             }
             jets[jetRegion].energy[fullBins] = jets[jetRegion].truthEnergy->GetBinCenter(i);
             jets[jetRegion].efficiency[fullBins] = jets[jetRegion].matchedEnergy->GetBinContent(i) / jets[jetRegion].truthEnergy->GetBinContent(i);
-            std::cout << jets[jetRegion].matchedEnergy->GetBinContent(i) << "\t" << jets[jetRegion].truthEnergy->GetBinContent(i) << std::endl;
+            // std::cout << jets[jetRegion].matchedEnergy->GetBinContent(i) << "\t" << jets[jetRegion].truthEnergy->GetBinContent(i) << std::endl;
             fullBins++;
         }
         jets[jetRegion].fullBins = fullBins;
-        std::cout << "filled " << fullBins << " bins" << std::endl;
+        std::cout << "filled " << fullBins << " bins in " << jets[jetRegion].descriptiveName << " region" << std::endl;
     }
 
     // plotting
@@ -194,21 +210,16 @@ void jetEfficiency(std::string centralFileList = "", std::string forwardFileList
     efficiencyCanvas->cd(1);
     THStack *stack = new THStack("jet_energy", "");
     TLegend *histLegend = new TLegend(0.45, 0.70, 0.9, 0.9);
-    if (jets[CENTRAL].loaded) {
-        jets[CENTRAL].truthEnergy->SetLineColor(kRed);
-        jets[CENTRAL].matchedEnergy->SetLineColor(kBlue);
-        stack->Add(jets[CENTRAL].truthEnergy);
-        stack->Add(jets[CENTRAL].matchedEnergy);
-        histLegend->AddEntry(jets[CENTRAL].truthEnergy, "Central Truth Jets");
-        histLegend->AddEntry(jets[CENTRAL].matchedEnergy, "Central Matched Jets");
-    }
-    if (jets[FORWARD].loaded) {
-        jets[FORWARD].truthEnergy->SetLineColor(kViolet);
-        jets[FORWARD].matchedEnergy->SetLineColor(kCyan);
-        stack->Add(jets[FORWARD].truthEnergy);
-        stack->Add(jets[FORWARD].matchedEnergy);
-        histLegend->AddEntry(jets[FORWARD].truthEnergy, "Forward Truth Jets");
-        histLegend->AddEntry(jets[FORWARD].matchedEnergy, "Forward Matched Jets");
+    for (uint8_t jetRegion = 0; jetRegion < NUM_REGIONS; jetRegion++) {
+        if (!jets[jetRegion].loaded) {
+            continue;
+        }
+        jets[jetRegion].truthEnergy->SetLineColor(jets[jetRegion].color);
+        jets[jetRegion].matchedEnergy->SetLineColor(jets[jetRegion].secondaryColor);
+        stack->Add(jets[jetRegion].truthEnergy);
+        stack->Add(jets[jetRegion].matchedEnergy);
+        histLegend->AddEntry(jets[jetRegion].truthEnergy, Form("%s Truth Jets", jets[jetRegion].descriptiveName.c_str()));
+        histLegend->AddEntry(jets[jetRegion].matchedEnergy, Form("%s Matched Jets", jets[jetRegion].descriptiveName.c_str()));
     }
     stack->Draw("nostack");
     stack->SetTitle("Jet Energy");
@@ -223,7 +234,7 @@ void jetEfficiency(std::string centralFileList = "", std::string forwardFileList
     // gPad->SetLeftMargin(0.1);
     TMultiGraph *mGraph = new TMultiGraph();
     TLegend *graphLegend = new TLegend(0.45, 0.8, 0.9, 0.9);
-    for (uint8_t jetRegion = 0; jetRegion < 3; jetRegion++) {
+    for (uint8_t jetRegion = 0; jetRegion < NUM_REGIONS; jetRegion++) {
         if (!jets[jetRegion].loaded) {
             continue;
         }
@@ -245,15 +256,23 @@ void jetEfficiency(std::string centralFileList = "", std::string forwardFileList
     efficiencyCanvas->SaveAs("canvas.png");
     efficiencyCanvas->SaveAs("canvas.c");
 
-    // delete truthEnergy;
-    // delete matchedEnergy;
-    // delete efficiencyCanvas;
-    // delete efficiencyGraph;
-    // delete stack;
-    // delete histLegend;
+    for (uint8_t jetRegion; jetRegion < NUM_REGIONS; jetRegion++) {
+        if (!jets[jetRegion].loaded) {
+            continue;
+        }
+        delete jets[jetRegion].truthEnergy;
+        delete jets[jetRegion].matchedEnergy;
+        delete jets[jetRegion].efficiencyGraph;
+        free(jets[jetRegion].energy);
+        free(jets[jetRegion].efficiency);
 
-    // free(energy);
-    // free(efficiency);
+    }
+    delete efficiencyCanvas;
+    delete stack;
+    delete histLegend;
+    delete mGraph;
+    delete graphLegend;
+
 
 
 }
