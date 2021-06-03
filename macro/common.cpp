@@ -5,6 +5,13 @@
 #include <list>
 #include <fstream>
 
+// Jet Regions
+const int CENTRAL = 0;
+const int FORWARD = 1;
+const int BACKWARD = 2;
+
+const int NUM_REGIONS = 3;
+
 class jetData {
     public:
         bool loaded = false;

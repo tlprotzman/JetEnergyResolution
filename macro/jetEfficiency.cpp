@@ -29,13 +29,6 @@ const float r = 0.5;
 const float r2 = r * r;
 
 
-// Jet Regions
-const int CENTRAL = 0;
-const int FORWARD = 1;
-const int BACKWARD = 2;
-
-const int NUM_REGIONS = 3;
-
 class jetEfficiencyData: public jetData {
     public:
         uint32_t fullBins;

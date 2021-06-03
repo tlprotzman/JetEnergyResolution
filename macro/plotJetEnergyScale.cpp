@@ -4,7 +4,9 @@
 #include <TH1.h>
 #include <TH1D.h>
 #include <TH2D.h>
+#include <TH2F.h>
 #include <TCanvas.h>
+#include <TMultiGraph.h>
 #include <TStyle.h>
 #include <TLegend.h>
 #include <THStack.h>
@@ -17,6 +19,10 @@
 #include <fstream>
 #include <string>
 #include <list>
+
+#include "common.cpp"
+
+// TODO Error bars
 
 
 // Hist Binning Parameters
@@ -37,99 +43,123 @@ const std::string secondPlot("normalizedEnergyHist");
 // const std::string secondPlot("etaEnergyHist");
 
 
-void plotJetEnergyScale(std::string centralJets = "", std::string forwardJets = "") {
+class jetEnergyData: public jetData {
+    public:
+        TH2F *truthEnergyHist;
+        TH2F *normalizedEnergyHist;
+        uint32_t fullBins;
+        TProfile *profile;
+        TH1D *projection;
+        float *energy;
+        float *scale;
+        float *resolution;
+        TGraph *jetScale;
+        TGraph *jetResolution;
+};
+
+
+void plotJetEnergyScale(std::string centralFileList = "", std::string forwardFileList = "", std::string backwardFileList = "") {
     // Initialization, i.e. loading file list and creating histogram
-    std::list<std::string> fileList;
-
-    std::ifstream centralFiles(centralJets);        // Load central jets
-    std::string filePath;
-    while (std::getline(centralFiles, filePath)) {
-        fileList.push_back(filePath);
+    jetEnergyData jets[NUM_REGIONS];
+    if (centralFileList != "") {
+        jets[CENTRAL].loaded = true;
+        jets[CENTRAL].descriptiveName = std::string("Central");
+        std::cout << "loaded " << readFileList(centralFileList, jets[CENTRAL].files) << " files in central region" << std::endl;
+        jets[CENTRAL].color = kRed;
+        jets[CENTRAL].secondaryColor = kMagenta;
+        jets[CENTRAL].marker = 21;
+        jets[CENTRAL].markerSize = 1;
+        jets[CENTRAL].truthEnergyHist = new TH2F(Form("energy_ratio, %s", jets[CENTRAL].descriptiveName.c_str()), "", bins_2d, min_bin, e_max, bins_2d, min_bin, e_max);
+        jets[CENTRAL].normalizedEnergyHist = new TH2F(Form("reco-truth/truth, %s", jets[CENTRAL].descriptiveName.c_str()), "", bins_resolution, min_bin, e_max, bins_resolution, -4, e_max);
     }
-    centralFiles.close();
-    
-    std::ifstream forwardFiles(forwardJets);        // Load forward jets
-    while (std::getline(forwardFiles, filePath)) {
-        fileList.push_back(filePath);
+    if (forwardFileList != "") {
+        jets[FORWARD].loaded = true;
+        jets[FORWARD].descriptiveName = std::string("Forward");
+        std::cout << "loaded " << readFileList(forwardFileList, jets[FORWARD].files) << " files in forward region" << std::endl;
+        jets[FORWARD].color = kBlue;
+        jets[FORWARD].secondaryColor = kCyan;
+        jets[FORWARD].marker = 22;
+        jets[FORWARD].markerSize = 1.5;
+        jets[FORWARD].truthEnergyHist = new TH2F(Form("energy_ratio, %s", jets[FORWARD].descriptiveName.c_str()), "", bins_2d, min_bin, e_max, bins_2d, min_bin, e_max);
+        jets[FORWARD].normalizedEnergyHist = new TH2F(Form("reco-truth/truth, %s", jets[FORWARD].descriptiveName.c_str()), "", bins_resolution, min_bin, e_max, bins_resolution, -4, e_max);
     }
-    forwardFiles.close();
-
-    TH2D *truthEnergyHist = new TH2D("energy_ratio, truth->reco", "", bins_2d, min_bin, e_max, bins_2d, min_bin, e_max);
-    TH2D *normalizedEnergyHist = new TH2D("reco-truth/truth, truth->reco", "", bins_resolution, min_bin, e_max, bins_resolution, -4, e_max);
-    TH2D *etaEnergyHist = new TH2D("eta vs energy, truth->reco", "", bins_2d, -4.5, 4.5, bins_2d, min_bin, ge_max);
-    
-    TH1D *truthGeHist = new TH1D("truth_ge", "", bins_1d, min_bin, ge_max);
-    TH1D *truthEHist = new TH1D("truth_e", "", bins_1d, min_bin, e_max);
+    if (backwardFileList != "") {
+        jets[BACKWARD].loaded = true;
+        jets[BACKWARD].descriptiveName = std::string("Backward");
+        std::cout << "loaded " << readFileList(backwardFileList, jets[BACKWARD].files) << " files in backward region" << std::endl;
+        jets[BACKWARD].color = kGreen;
+        jets[BACKWARD].secondaryColor = kYellow + 1;
+        jets[BACKWARD].marker = 21;
+        jets[BACKWARD].markerSize = 1;
+        jets[BACKWARD].truthEnergyHist = new TH2F(Form("energy_ratio, %s", jets[BACKWARD].descriptiveName.c_str()), "", bins_2d, min_bin, e_max, bins_2d, min_bin, e_max);
+        jets[BACKWARD].normalizedEnergyHist = new TH2F(Form("reco-truth/truth, %s", jets[BACKWARD].descriptiveName.c_str()), "", bins_resolution, min_bin, e_max, bins_resolution, -4, e_max);
+    }
 
     // Loop over files
-    for (std::list<std::string>::iterator iter = fileList.begin(); iter != fileList.end(); ++iter) {
-        TFile *inFile = TFile::Open((*iter).c_str());
-        TTree *jets = (TTree*) inFile->Get("ntp_truthjet");
-        if (jets == nullptr) {
-            std::cout << "Could not find jet tree" << std::endl;
+    for (uint8_t jetRegion = 0; jetRegion < NUM_REGIONS; jetRegion++) {
+        if (!jets[jetRegion].loaded) {
+            continue;
         }
-        float truthE, recoE;
-        float truthEta, recoEta;
-        float truthPhi, recoPhi;
-        jets->SetBranchAddress("ge", &truthE);
-        jets->SetBranchAddress("e", &recoE);
-        jets->SetBranchAddress("geta", &truthEta);
-        jets->SetBranchAddress("eta", &recoEta);
-        jets->SetBranchAddress("gphi", &truthPhi);
-        jets->SetBranchAddress("phi", &recoPhi);
+        for (std::list<std::string>::iterator iter = jets[jetRegion].files.begin(); iter != jets[jetRegion].files.end(); ++iter) {
+            TFile *inFile = TFile::Open((*iter).c_str());
+            TTree *jetTree = (TTree*) inFile->Get("ntp_truthjet");
+            if (jetTree == nullptr) {
+                std::cout << "Could not find jet tree" << std::endl;
+            }
+            float truthE, recoE;
+            float pos[4];
+            jetTree->SetBranchAddress("ge", &truthE);
+            jetTree->SetBranchAddress("e", &recoE);
+            jetTree->SetBranchAddress("geta", &pos[0]);
+            jetTree->SetBranchAddress("eta", &pos[1]);
+            jetTree->SetBranchAddress("gphi", &pos[2]);
+            jetTree->SetBranchAddress("phi", &pos[3]);
 
 
-        // Create histograms
-        for (uint32_t i = 0; i < jets->GetEntries(); i++) {
-            jets->GetEntry(i);
-
-            float dEta = truthEta - recoEta;
-            float dPhi = truthPhi - recoPhi;
-            if (dPhi > TMath::Pi()) {
-                dPhi -= TMath::TwoPi();
+            // Create histograms
+            for (uint32_t i = 0; i < jetTree->GetEntries(); i++) {
+                jetTree->GetEntry(i);
+                if (r2 < calculateDistance(pos)) {
+                    continue;
+                }
+                // Filling Histograms
+                if (!std::isnan(recoE) && !std::isnan(truthE)) {
+                    jets[jetRegion].truthEnergyHist->Fill(truthE, recoE);
+                    jets[jetRegion].normalizedEnergyHist->Fill(truthE, (recoE - truthE) / truthE);
+                }
+                // std::cout << truthE << "\t" << recoE << std::endl;
+            
             }
-            if (dPhi < -1 * TMath::Pi()) {
-                dPhi += TMath::TwoPi();
-            }
-            if (r2 < dPhi * dPhi + dEta * dEta) {
-                continue;
-            }
-            // Filling Histograms
-            truthGeHist->Fill(recoE);
-            truthEHist->Fill(truthE);
-            if (false || (!std::isnan(truthEta) && !std::isnan(recoE))) {
-                etaEnergyHist->Fill(truthEta, recoE);
-            }
-            if (!std::isnan(recoE) && !std::isnan(truthE)) {
-                truthEnergyHist->Fill(truthE, recoE);
-                normalizedEnergyHist->Fill(truthE, (recoE - truthE) / truthE);
-            }
-            // std::cout << truthE << "\t" << recoE << std::endl;
-        
+            inFile->Close();
         }
-        inFile->Close();
     }
 
     
     // Calculate energy scale and resolution
     // TProfile *profile = truthEnergyHist->ProfileX();
-    TProfile *profile = normalizedEnergyHist->ProfileX();
-    TH1D *projection = normalizedEnergyHist->ProjectionX();
-    profile->BuildOptions(0, 0, "s");
-    double *energy = (double*)malloc(bins_resolution * sizeof(double));
-    double *scale = (double*)malloc(bins_resolution * sizeof(double));
-    double *resolution = (double*)malloc(bins_resolution * sizeof(double));
-    int fullBins = 0;
-    for (uint32_t i = 1; i <= bins_resolution; i++) {
-        if (projection->GetBinContent(i) == 0) {
+    for (uint8_t jetRegion = 0; jetRegion < NUM_REGIONS; jetRegion++) {
+        if (!jets[jetRegion].loaded) {
             continue;
         }
-        energy[fullBins] = profile->GetBinCenter(i);
-        // scale[fullBins] = (profile->GetBinContent(i) - profile->GetBinCenter(i)) / profile->GetBinCenter(i);
-        scale[fullBins] = profile->GetBinContent(i);
-        resolution[fullBins] = profile->GetBinError(i);
-        fullBins++;
-        // std::cout << projection->GetBinContent(i) << "\t" << energy[i] << "\t" << scale[i] << std::endl;
+        jets[jetRegion].profile = jets[jetRegion].normalizedEnergyHist->ProfileX();
+        jets[jetRegion].projection = jets[jetRegion].normalizedEnergyHist->ProjectionX();
+        jets[jetRegion].profile->BuildOptions(0, 0, "s");
+        jets[jetRegion].energy = (float*)malloc(bins_resolution * sizeof(float));
+        jets[jetRegion].scale = (float*)malloc(bins_resolution * sizeof(float));
+        jets[jetRegion].resolution = (float*)malloc(bins_resolution * sizeof(float));
+        uint32_t fullBins = 0;
+        for (uint32_t i = 1; i <= bins_resolution; i++) {
+            if (jets[jetRegion].projection->GetBinContent(i) == 0) {
+                continue;
+            }
+            jets[jetRegion].energy[fullBins] = jets[jetRegion].profile->GetBinCenter(i);
+            // scale[fullBins] = (profile->GetBinContent(i) - profile->GetBinCenter(i)) / profile->GetBinCenter(i);
+            jets[jetRegion].scale[fullBins] = jets[jetRegion].profile->GetBinContent(i);
+            jets[jetRegion].resolution[fullBins] = jets[jetRegion].profile->GetBinError(i);
+            fullBins++;
+            // std::cout << projection->GetBinContent(i) << "\t" << energy[i] << "\t" << scale[i] << std::endl;
+        }
+        jets[jetRegion].fullBins = fullBins;
     }
 
     // gStyle->SetPadLeftMargin(0.15);
@@ -140,76 +170,64 @@ void plotJetEnergyScale(std::string centralJets = "", std::string forwardJets = 
     gStyle->SetPadLeftMargin(0.12);
     gStyle->SetPadTopMargin(0.12);
     gStyle->SetPadBottomMargin(0.12);
-    TCanvas *jetEnergy = new TCanvas("jet_energy", "", 1000, 1000);
-    jetEnergy->Divide(2, 2);
+    TCanvas *jetEnergy = new TCanvas("jet_energy", "", 1000, 500);
+    jetEnergy->Divide(2, 1);
+    
     jetEnergy->cd(1);
-    truthEnergyHist->Draw("colz");
-    truthEnergyHist->SetXTitle("ge");
-    truthEnergyHist->SetYTitle("e");
-    truthEnergyHist->SetTitle("ep, 10 GeV x 100 GeV");
-    truthEnergyHist->SetStats(false);
-    gPad->SetLogz();
-    
-    
-
-    jetEnergy->cd(2);
-    if (secondPlot == "normalizedEnergyHist") {
-        normalizedEnergyHist->Draw("colz");
-        normalizedEnergyHist->SetXTitle("ge");
-        normalizedEnergyHist->SetYTitle("(reco - truth) / truth");
-        normalizedEnergyHist->SetTitle("ep, 10x100 GeV, Jet Scale");
-        normalizedEnergyHist->SetStats(false);
+    TMultiGraph *jetScale = new TMultiGraph();
+    TLegend *jetScaleLegend = new TLegend(0.45, 0.8, 0.9, 0.9);
+    for (uint8_t jetRegion = 0; jetRegion < NUM_REGIONS; jetRegion++) {
+        if (!jets[jetRegion].loaded) {
+            continue;
+        }
+        jets[jetRegion].jetScale = new TGraph(jets[jetRegion].fullBins, jets[jetRegion].energy, jets[jetRegion].scale);
+        jets[jetRegion].jetScale->SetMarkerColor(jets[jetRegion].color);
+        jets[jetRegion].jetScale->SetMarkerStyle(jets[jetRegion].marker);
+        jets[jetRegion].jetScale->SetMarkerSize(jets[jetRegion].markerSize);
+        jetScale->Add(jets[jetRegion].jetScale);
+        jetScaleLegend->AddEntry(jets[jetRegion].jetScale, Form("%s Jets", jets[jetRegion].descriptiveName.c_str()));
     }
-    else if (secondPlot == "etaEnergyHist") {
-        gStyle->SetStatX(.4);
-        gStyle->SetStatY(0.92);
-        etaEnergyHist->Draw("colz");
-        etaEnergyHist->SetXTitle("eta");
-        etaEnergyHist->SetYTitle("ge");
-        etaEnergyHist->SetTitle("ep, 10x100 GeV, truth->reco, Truth Energy vs Eta");
-        etaEnergyHist->SetStats(false);
-
-    }
-    else if (secondPlot == "energyScale") {
-        profile->Draw("");
-        profile->SetXTitle("ge");
-        profile->SetYTitle("(reco-truth)/truth");
-        profile->SetTitle("Profile on X");
-    }
-    gPad->SetLogz();
-    
-
-    jetEnergy->cd(3);
-    TGraph *jetScale = new TGraph(fullBins, energy, scale);
     jetScale->GetXaxis()->SetTitle("Energy");
     jetScale->GetYaxis()->SetTitle("Scale (Mean((reco-truth)/truth))");
     jetScale->SetTitle("Jet Energy Scale");
-    jetScale->SetMarkerSize(2.5);
-    // jetScale->GetXaxis()->SetRangeUser(0, 20);
-    // jetScale->GetYaxis()->SetRangeUser(-0.1, 0.2);
-    jetScale->Draw("A*");
+    jetScale->Draw("ALP");
+    jetScaleLegend->Draw();
 
 
     
-    jetEnergy->cd(4);
-    TGraph *jetResolution = new TGraph(fullBins, energy, resolution);
+    jetEnergy->cd(2);
+    TMultiGraph *jetResolution = new TMultiGraph();
+    TLegend *jetResolutionLegend = new TLegend(0.45, 0.8, 0.9, 0.9);
+    for (uint8_t jetRegion = 0; jetRegion < NUM_REGIONS; jetRegion++) {
+        if (!jets[jetRegion].loaded) {
+            continue;
+        }
+        jets[jetRegion].jetResolution = new TGraph(jets[jetRegion].fullBins, jets[jetRegion].energy, jets[jetRegion].resolution);
+        jets[jetRegion].jetResolution->SetMarkerColor(jets[jetRegion].color);
+        jets[jetRegion].jetResolution->SetMarkerStyle(jets[jetRegion].marker);
+        jets[jetRegion].jetResolution->SetMarkerSize(jets[jetRegion].markerSize);
+        jetResolution->Add(jets[jetRegion].jetResolution);
+        jetResolutionLegend->AddEntry(jets[jetRegion].jetResolution, Form("%s Jets", jets[jetRegion].descriptiveName.c_str()));
+    }
     jetResolution->GetXaxis()->SetTitle("Energy");
     jetResolution->GetYaxis()->SetTitle("Resolution (RMS((reco-truth)/truth))"); 
     jetResolution->SetTitle("Jet Energy Resolution");
-    jetResolution->SetMarkerSize(2.5);
-    jetResolution->GetYaxis()->SetRangeUser(-0.1, 1);
-    jetResolution->Draw("A*");
+    jetResolution->Draw("ALP");
+    jetResolutionLegend->Draw();
 
     jetEnergy->SaveAs("canvas.png");
 
 
-    // Some cleanup
-    delete jetEnergy;
-    delete jetScale;
-    delete truthEnergyHist;
-    delete truthGeHist;
-    delete truthEHist;
+    // TODO Show 1d projection on y for a bin on x
 
-    free(energy);
-    free(scale);
+    // Some cleanup
+    // pft, who needs cleanup
+    // delete jetEnergy;
+    // delete jetScale;
+    // delete truthEnergyHist;
+    // delete truthGeHist;
+    // delete truthEHist;
+
+    // free(energy);
+    // free(scale);
 }
