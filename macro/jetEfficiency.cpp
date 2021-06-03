@@ -15,6 +15,8 @@
 #include <iostream>
 #include <fstream>
 
+#include "common.cpp"
+
 // Binning
 const int num_bins = 50;
 const int min_energy = 0;
@@ -34,63 +36,19 @@ const int BACKWARD = 2;
 
 const int NUM_REGIONS = 3;
 
-
-struct jetData {
-    bool loaded = false;
-    std::string descriptiveName;
-    float minEta;
-    float maxEta;
-    std::list<std::string> files;
-    TH1F *truthEnergy;
-    TH1F *matchedEnergy;
-    uint32_t fullBins;
-    float *energy;
-    float *efficiency;
-    TGraph *efficiencyGraph;
-    int color;
-    int secondaryColor;
-    int marker;
-    float markerSize;
+class jetEfficiencyData: public jetData {
+    public:
+        uint32_t fullBins;
+        TH1F *truthEnergy;
+        TH1F *matchedEnergy;
+        float *energy;
+        float *efficiency;
+        TGraph *efficiencyGraph;
 };
-
-// Translate file list into list of file paths
-// Really should make a personal library of functions...
-int readFileList(std::string fileList, std::list<std::string> &list) {
-    int numFiles = 0;
-    std::ifstream files(fileList);
-    std::string filePath;
-    
-    while (std::getline(files, filePath)) {
-        list.push_back(filePath);
-        numFiles++;
-    }
-    files.close();
-    return numFiles;
-}
-
-// pos = [truthEta, truthPhi, recoEta, recoPhi]
-// returns R2 = dEta * dEta + dPhi * dPhi
-float calculateDistance(float *pos) {
-    for (uint8_t i = 0; i < 4; i++) {
-        if (std::isnan(pos[i])) {
-            return 9999;
-        }
-    }
-    float dEta, dPhi;
-    dEta = pos[0] - pos[2];
-    dPhi = pos[1] - pos[3];
-    if (dPhi > TMath::Pi()) {
-        dPhi -= TMath::TwoPi();
-    }
-    if (dPhi < -1 * TMath::Pi()) {
-        dPhi += TMath::TwoPi();
-    }
-    return dEta *dEta + dPhi * dPhi;
-}
 
 void jetEfficiency(std::string centralFileList = "", std::string forwardFileList = "", std::string backwardFileList = "") {
     // Load files
-    struct jetData jets[NUM_REGIONS];
+    jetEfficiencyData jets[NUM_REGIONS];
     if (centralFileList != "") {
         jets[CENTRAL].loaded = true;
         jets[CENTRAL].descriptiveName = std::string("Central");
