@@ -8,6 +8,7 @@
 #include <TGraph.h>
 #include <THStack.h>
 #include <TLegend.h>
+#include <TMultiGraph.h>
 
 #include <list>
 #include <string>
@@ -24,6 +25,30 @@ const float r = 0.5;
 
 // Shouldn't need to touch these
 const float r2 = r * r;
+
+
+// Jet Regions
+const int CENTRAL = 0;
+const int FORWARD = 1;
+const int BACKWARD = 2;
+
+
+struct jetData {
+    bool loaded = false;
+    std::string descriptiveName;
+    float minEta;
+    float maxEta;
+    std::list<std::string> files;
+    TH1F *truthEnergy;
+    TH1F *matchedEnergy;
+    uint32_t fullBins;
+    float *energy;
+    float *efficiency;
+    TGraph *efficiencyGraph;
+    int color;
+    int marker;
+    float markerSize;
+};
 
 // Translate file list into list of file paths
 // Really should make a personal library of functions...
@@ -60,120 +85,175 @@ float calculateDistance(float *pos) {
     return dEta *dEta + dPhi * dPhi;
 }
 
-void jetEfficiency(std::string jets = "") {
+void jetEfficiency(std::string centralFileList = "", std::string forwardFileList = "", std::string backwardFileLIst = "") {
     // Load files
-    std::list<std::string> filePaths;
-    std::cout << "read " << readFileList(jets, filePaths) << " file paths" << std::endl;
-
-    // 1D histograms to store number of truth jets and reco jets for each energy bin
-    TH1F *truthEnergy = new TH1F("truth_energy", "", num_bins, min_energy, max_energy);
-    TH1F *matchedEnergy  = new TH1F("reco_energy",  "", num_bins, min_energy, max_energy);
+    struct jetData jets[3];
+    if (centralFileList != "") {
+        jets[CENTRAL].loaded = true;
+        jets[CENTRAL].descriptiveName = std::string("Central");
+        std::cout << "loaded " << readFileList(centralFileList, jets[CENTRAL].files) << " files in central region" << std::endl;
+        jets[CENTRAL].minEta = -1.5;
+        jets[CENTRAL].maxEta = 1.5;
+        jets[CENTRAL].color = kRed;
+        jets[CENTRAL].marker = 21;
+        jets[CENTRAL].markerSize = 1;
+    }
+    if (forwardFileList != "") {
+        jets[FORWARD].loaded = true;
+        jets[FORWARD].descriptiveName = std::string("Forward");
+        std::cout << "loaded " << readFileList(forwardFileList, jets[FORWARD].files) << " files in forward region" << std::endl;
+        jets[FORWARD].minEta = 1.5;
+        jets[FORWARD].maxEta = 3;
+        jets[FORWARD].color = kBlue;
+        jets[FORWARD].marker = 22;
+        jets[FORWARD].markerSize = 1.4;
+    }
 
     // Loop over all the files
-    for (std::list<std::string>::iterator iter = filePaths.begin(); iter != filePaths.end(); ++iter) {
-        TFile *inFile = TFile::Open((*iter).c_str());       // open root file
-        if (inFile == nullptr) {
-            std::cerr << "Could not open file " << *iter << std::endl;
+    for (uint8_t jetRegion = 0; jetRegion < 3; jetRegion++) {
+        if (!jets[jetRegion].loaded) {  // Skip over regions we aren't studying
             continue;
         }
-        TTree *jets = (TTree*) inFile->Get("ntp_truthjet"); // get truthjet tree
-        if (jets == nullptr) {
-            std::cerr << "Could not file jet tree" << std::endl;
-            continue;
+            // 1D histograms to store number of truth jets and reco jets for each energy bin
+        jets[jetRegion].truthEnergy = new TH1F(Form("truth_energy_%s", jets[jetRegion].descriptiveName.c_str()), "", num_bins, min_energy, max_energy);
+        jets[jetRegion].matchedEnergy  = new TH1F(Form("reco_energy_%s", jets[jetRegion].descriptiveName.c_str()),  "", num_bins, min_energy, max_energy);
+        for (std::list<std::string>::iterator iter = jets[jetRegion].files.begin(); iter != jets[jetRegion].files.end(); ++iter) {
+            TFile *inFile = TFile::Open((*iter).c_str());       // open root file
+            if (inFile == nullptr) {
+                std::cerr << "Could not open file " << *iter << std::endl;
+                continue;
+            }
+            TTree *jetTree = (TTree*) inFile->Get("ntp_truthjet"); // get truthjet tree
+            if (jetTree == nullptr) {
+                std::cerr << "Could not file jet tree" << std::endl;
+                continue;
+            }
+
+            float truthE, recoE;
+            float pos[4];
+
+            jetTree->SetBranchAddress("ge", &truthE);
+            jetTree->SetBranchAddress("e", &recoE);
+            jetTree->SetBranchAddress("geta", &pos[0]);
+            jetTree->SetBranchAddress("gphi", &pos[1]);
+            jetTree->SetBranchAddress("eta", &pos[2]);
+            jetTree->SetBranchAddress("phi", &pos[3]);
+
+            for (uint32_t i = 0; i < jetTree->GetEntries(); i++) {
+                jetTree->GetEntry(i);
+                if (std::isnan(truthE)) {
+                    continue;
+                }
+                if (pos[0] < jets[jetRegion].minEta || pos[0] > jets[jetRegion].maxEta) {
+                    continue;
+                }
+                // Do we filter on R for efficiency? Probably
+                
+                jets[jetRegion].truthEnergy->Fill(truthE);
+                if (r2 < calculateDistance(pos)) {
+                    continue;
+                }
+                if (std::isnan(truthE) || std::isnan(recoE)) {
+                    continue;
+                }
+                jets[jetRegion].matchedEnergy->Fill(truthE);
+                // std::cout << truthE << "\t" << recoE << std::endl;
+                // std::cout << pos[0] << "\t" << pos[1] << std::endl;
+            }
+            inFile->Close();
         }
-
-        float truthE, recoE;
-        float pos[4];
-
-        jets->SetBranchAddress("ge", &truthE);
-        jets->SetBranchAddress("e", &recoE);
-        jets->SetBranchAddress("geta", &pos[0]);
-        jets->SetBranchAddress("gphi", &pos[1]);
-        jets->SetBranchAddress("eta", &pos[2]);
-        jets->SetBranchAddress("phi", &pos[3]);
-
-        for (uint32_t i = 0; i < jets->GetEntries(); i++) {
-            jets->GetEntry(i);
-            if (std::isnan(pos[0]) || abs(pos[0]) > 1.5) {
-                continue;
-            }
-            if (std::isnan(truthE)) {
-                continue;
-            }
-            // Do we filter on R for efficiency? Probably
-            
-            truthEnergy->Fill(truthE);
-            if (r2 < calculateDistance(pos)) {
-                continue;
-            }
-            if (std::isnan(truthE) || std::isnan(recoE)) {
-                continue;
-            }
-            matchedEnergy->Fill(truthE);
-            // std::cout << truthE << "\t" << recoE << std::endl;
-            // std::cout << pos[0] << "\t" << pos[1] << std::endl;
-        }
-        inFile->Close();
     }
 
     // Calculate efficiencies
     // efficiency = (num matched) / (num truth)
-    float *energy = (float*)malloc(num_bins * sizeof(float));
-    float *efficiency = (float*)malloc(num_bins * sizeof(float));
-    uint32_t fullBins = 0;
-    for (uint32_t i = 1; i < num_bins; i++) {
-        if (truthEnergy->GetBinContent(i) == 0 || matchedEnergy->GetBinContent(i) == 0) {
+    for (uint8_t jetRegion = 0; jetRegion < 3; jetRegion++) {
+        if (!jets[jetRegion].loaded) {
             continue;
         }
-        energy[fullBins] = truthEnergy->GetBinCenter(i);
-        efficiency[fullBins] = matchedEnergy->GetBinContent(i) / truthEnergy->GetBinContent(i);
-        std::cout << matchedEnergy->GetBinContent(i) << "\t" << truthEnergy->GetBinContent(i) << std::endl;
-        fullBins++;
+        jets[jetRegion].energy = (float*)malloc(num_bins * sizeof(float));
+        jets[jetRegion].efficiency = (float*)malloc(num_bins * sizeof(float));
+        uint32_t fullBins = 0;
+        for (uint32_t i = 1; i < num_bins; i++) {
+            if (jets[jetRegion].truthEnergy->GetBinContent(i) == 0 || jets[jetRegion].matchedEnergy->GetBinContent(i) == 0) {
+                continue;
+            }
+            jets[jetRegion].energy[fullBins] = jets[jetRegion].truthEnergy->GetBinCenter(i);
+            jets[jetRegion].efficiency[fullBins] = jets[jetRegion].matchedEnergy->GetBinContent(i) / jets[jetRegion].truthEnergy->GetBinContent(i);
+            std::cout << jets[jetRegion].matchedEnergy->GetBinContent(i) << "\t" << jets[jetRegion].truthEnergy->GetBinContent(i) << std::endl;
+            fullBins++;
+        }
+        jets[jetRegion].fullBins = fullBins;
+        std::cout << "filled " << fullBins << " bins" << std::endl;
     }
-    std::cout << "filled " << fullBins << " bins" << std::endl;
 
     // plotting
     TCanvas *efficiencyCanvas = new TCanvas("jet_efficiency", "", 1000, 500);
     efficiencyCanvas->Divide(2, 1);
 
+    // TODO make this handle different selections of regions better
     efficiencyCanvas->cd(1);
     THStack *stack = new THStack("jet_energy", "");
-    truthEnergy->SetLineColor(kRed);
-    matchedEnergy->SetLineColor(kBlue);
-    stack->Add(truthEnergy);
-    stack->Add(matchedEnergy);
+    TLegend *histLegend = new TLegend(0.45, 0.70, 0.9, 0.9);
+    if (jets[CENTRAL].loaded) {
+        jets[CENTRAL].truthEnergy->SetLineColor(kRed);
+        jets[CENTRAL].matchedEnergy->SetLineColor(kBlue);
+        stack->Add(jets[CENTRAL].truthEnergy);
+        stack->Add(jets[CENTRAL].matchedEnergy);
+        histLegend->AddEntry(jets[CENTRAL].truthEnergy, "Central Truth Jets");
+        histLegend->AddEntry(jets[CENTRAL].matchedEnergy, "Central Matched Jets");
+    }
+    if (jets[FORWARD].loaded) {
+        jets[FORWARD].truthEnergy->SetLineColor(kViolet);
+        jets[FORWARD].matchedEnergy->SetLineColor(kCyan);
+        stack->Add(jets[FORWARD].truthEnergy);
+        stack->Add(jets[FORWARD].matchedEnergy);
+        histLegend->AddEntry(jets[FORWARD].truthEnergy, "Forward Truth Jets");
+        histLegend->AddEntry(jets[FORWARD].matchedEnergy, "Forward Matched Jets");
+    }
     stack->Draw("nostack");
     stack->SetTitle("Jet Energy");
     stack->GetXaxis()->SetTitle("Jet Energy");
     stack->GetYaxis()->SetTitle("Counts");
-    TLegend *legend = new TLegend(0.50, 0.80, 0.9, 0.9);
-    legend->AddEntry(truthEnergy, "Truth Jets");
-    legend->AddEntry(matchedEnergy, "Matched Jets");
-    legend->SetTextSize(0.035);
-    legend->Draw();
-    std::cout << "integrals: "  << truthEnergy->Integral() << "\t" << matchedEnergy->Integral() << std::endl;
+    histLegend->SetTextSize(0.035);
+    histLegend->Draw();
     gPad->SetLogy();
     
 
     efficiencyCanvas->cd(2);
     // gPad->SetLeftMargin(0.1);
-    TGraph *efficiencyGraph = new TGraph(fullBins, energy, efficiency);
-    efficiencyGraph->SetTitle("Jet Efficiency");
-    efficiencyGraph->GetXaxis()->SetTitle("Jet Energy");
-    efficiencyGraph->GetYaxis()->SetTitle("Efficiency");
-    efficiencyGraph->Draw("A*");
+    TMultiGraph *mGraph = new TMultiGraph();
+    TLegend *graphLegend = new TLegend(0.45, 0.8, 0.9, 0.9);
+    for (uint8_t jetRegion = 0; jetRegion < 3; jetRegion++) {
+        if (!jets[jetRegion].loaded) {
+            continue;
+        }
+        jets[jetRegion].efficiencyGraph = new TGraph(jets[jetRegion].fullBins, jets[jetRegion].energy, jets[jetRegion].efficiency);
+        jets[jetRegion].efficiencyGraph->SetLineColor(jets[jetRegion].color);
+        jets[jetRegion].efficiencyGraph->SetMarkerColor(jets[jetRegion].color + 2);
+        jets[jetRegion].efficiencyGraph->SetMarkerSize(jets[jetRegion].markerSize);
+        jets[jetRegion].efficiencyGraph->SetMarkerStyle(jets[jetRegion].marker);
+        mGraph->Add(jets[jetRegion].efficiencyGraph);
+        graphLegend->AddEntry(jets[jetRegion].efficiencyGraph, Form("%s Jet Efficiency", jets[jetRegion].descriptiveName.c_str()));
+    }
+    mGraph->SetTitle("Jet Efficiency");
+    mGraph->GetXaxis()->SetTitle("Jet Energy");
+    mGraph->GetYaxis()->SetTitle("Efficiency");
+    mGraph->Draw("ALP");
+    graphLegend->SetTextSize(0.035);
+    graphLegend->Draw();
     // gPad->SetLogy();
     efficiencyCanvas->SaveAs("canvas.png");
+    efficiencyCanvas->SaveAs("canvas.c");
 
-    delete truthEnergy;
-    delete matchedEnergy;
-    delete efficiencyCanvas;
-    delete efficiencyGraph;
-    delete stack;
-    delete legend;
+    // delete truthEnergy;
+    // delete matchedEnergy;
+    // delete efficiencyCanvas;
+    // delete efficiencyGraph;
+    // delete stack;
+    // delete histLegend;
 
-    free(energy);
-    free(efficiency);
+    // free(energy);
+    // free(efficiency);
 
 
 }

@@ -21,9 +21,11 @@ macro/smallfilelist.txt
 macro/fileforwardlist.txt
 macro/fullfilelist.txt
 macro/smallfileforwardlist.txt
+macro/fwdfilelist.txt
 
 # Output
 macro/canvas.png
+macro/canvas.c
 
 # ide settings
 .vscode
