@@ -28,10 +28,15 @@
 // Hist Binning Parameters
 const int bins_1d = 80;
 const int bins_2d = 30;
-const int bins_resolution = 30;
+const int bins_resolution = 15;
 const int min_bin = 0;
 const int e_max = 30;
 const int ge_max = 80;
+const int norm_min = -2;
+const int norm_max = 2;
+const int norm_resolution = 60;
+
+const float slice_energy = 3; // GeV
 
 // Cuts
 const double r = 0.5;   // r^2 < dphi^2 + deta^2
@@ -55,6 +60,7 @@ class jetEnergyData: public jetData {
         float *resolution;
         TGraph *jetScale;
         TGraph *jetResolution;
+        TH1D *slice;
 };
 
 
@@ -70,7 +76,7 @@ void plotJetEnergyScale(std::string centralFileList = "", std::string forwardFil
         jets[CENTRAL].marker = 21;
         jets[CENTRAL].markerSize = 1;
         jets[CENTRAL].truthEnergyHist = new TH2F(Form("energy_ratio, %s", jets[CENTRAL].descriptiveName.c_str()), "", bins_2d, min_bin, e_max, bins_2d, min_bin, e_max);
-        jets[CENTRAL].normalizedEnergyHist = new TH2F(Form("reco-truth/truth, %s", jets[CENTRAL].descriptiveName.c_str()), "", bins_resolution, min_bin, e_max, bins_resolution, -4, e_max);
+        jets[CENTRAL].normalizedEnergyHist = new TH2F(Form("reco-truth/truth, %s", jets[CENTRAL].descriptiveName.c_str()), "", bins_resolution, min_bin, e_max, norm_resolution, norm_min, norm_max);
     }
     if (forwardFileList != "") {
         jets[FORWARD].loaded = true;
@@ -81,7 +87,7 @@ void plotJetEnergyScale(std::string centralFileList = "", std::string forwardFil
         jets[FORWARD].marker = 22;
         jets[FORWARD].markerSize = 1.5;
         jets[FORWARD].truthEnergyHist = new TH2F(Form("energy_ratio, %s", jets[FORWARD].descriptiveName.c_str()), "", bins_2d, min_bin, e_max, bins_2d, min_bin, e_max);
-        jets[FORWARD].normalizedEnergyHist = new TH2F(Form("reco-truth/truth, %s", jets[FORWARD].descriptiveName.c_str()), "", bins_resolution, min_bin, e_max, bins_resolution, -4, e_max);
+        jets[FORWARD].normalizedEnergyHist = new TH2F(Form("reco-truth/truth, %s", jets[FORWARD].descriptiveName.c_str()), "", bins_resolution, min_bin, e_max, norm_resolution, norm_min, norm_max);
     }
     if (backwardFileList != "") {
         jets[BACKWARD].loaded = true;
@@ -92,7 +98,7 @@ void plotJetEnergyScale(std::string centralFileList = "", std::string forwardFil
         jets[BACKWARD].marker = 21;
         jets[BACKWARD].markerSize = 1;
         jets[BACKWARD].truthEnergyHist = new TH2F(Form("energy_ratio, %s", jets[BACKWARD].descriptiveName.c_str()), "", bins_2d, min_bin, e_max, bins_2d, min_bin, e_max);
-        jets[BACKWARD].normalizedEnergyHist = new TH2F(Form("reco-truth/truth, %s", jets[BACKWARD].descriptiveName.c_str()), "", bins_resolution, min_bin, e_max, bins_resolution, -4, e_max);
+        jets[BACKWARD].normalizedEnergyHist = new TH2F(Form("reco-truth/truth, %s", jets[BACKWARD].descriptiveName.c_str()), "", bins_resolution, min_bin, e_max, norm_resolution, norm_min, norm_max);
     }
 
     // Loop over files
@@ -174,8 +180,8 @@ void plotJetEnergyScale(std::string centralFileList = "", std::string forwardFil
     jetEnergy->Divide(2, 1);
     
     jetEnergy->cd(1);
-    TMultiGraph *jetScale = new TMultiGraph();
-    TLegend *jetScaleLegend = new TLegend(0.45, 0.8, 0.9, 0.9);
+    TMultiGraph *jetScale = new TMultiGraph("jet_energy_scale", "Jet Energy Scale");
+    TLegend *jetScaleLegend = new TLegend(0.65, 0.8, 0.87, 0.87);
     for (uint8_t jetRegion = 0; jetRegion < NUM_REGIONS; jetRegion++) {
         if (!jets[jetRegion].loaded) {
             continue;
@@ -187,17 +193,17 @@ void plotJetEnergyScale(std::string centralFileList = "", std::string forwardFil
         jetScale->Add(jets[jetRegion].jetScale);
         jetScaleLegend->AddEntry(jets[jetRegion].jetScale, Form("%s Jets", jets[jetRegion].descriptiveName.c_str()));
     }
+    jetScale->Draw("ALP");
     jetScale->GetXaxis()->SetTitle("Energy");
     jetScale->GetYaxis()->SetTitle("Scale (Mean((reco-truth)/truth))");
     jetScale->SetTitle("Jet Energy Scale");
-    jetScale->Draw("ALP");
     jetScaleLegend->Draw();
 
 
     
     jetEnergy->cd(2);
-    TMultiGraph *jetResolution = new TMultiGraph();
-    TLegend *jetResolutionLegend = new TLegend(0.45, 0.8, 0.9, 0.9);
+    TMultiGraph *jetResolution = new TMultiGraph("jet_energy_resolution", "Jet Energy Resolution");
+    TLegend *jetResolutionLegend = new TLegend(0.65, 0.8, 0.87, 0.87);
     for (uint8_t jetRegion = 0; jetRegion < NUM_REGIONS; jetRegion++) {
         if (!jets[jetRegion].loaded) {
             continue;
@@ -209,16 +215,38 @@ void plotJetEnergyScale(std::string centralFileList = "", std::string forwardFil
         jetResolution->Add(jets[jetRegion].jetResolution);
         jetResolutionLegend->AddEntry(jets[jetRegion].jetResolution, Form("%s Jets", jets[jetRegion].descriptiveName.c_str()));
     }
+    jetResolution->Draw("ALP");
     jetResolution->GetXaxis()->SetTitle("Energy");
     jetResolution->GetYaxis()->SetTitle("Resolution (RMS((reco-truth)/truth))"); 
     jetResolution->SetTitle("Jet Energy Resolution");
-    jetResolution->Draw("ALP");
     jetResolutionLegend->Draw();
 
     jetEnergy->SaveAs("canvas.png");
+    jetEnergy->SaveAs("canvas.c");
 
 
-    // TODO Show 1d projection on y for a bin on x
+    TCanvas *sliceCanvas = new TCanvas("slice", "", 500, 500);
+    THStack *sliceStack = new THStack();
+    TLegend *sliceLegend = new TLegend(0.65, 0.8, 0.87, 0.87);
+    for (uint8_t jetRegion = 0; jetRegion < NUM_REGIONS; jetRegion++) {
+        if (!jets[jetRegion].loaded) {
+            continue;
+        }
+        jets[jetRegion].slice = jets[jetRegion].normalizedEnergyHist->ProjectionY(Form("%s slice", jets[jetRegion].descriptiveName.c_str()), 
+                                                                                  slice_energy, slice_energy);
+        jets[jetRegion].slice->SetLineColor(jets[jetRegion].color);
+        sliceStack->Add(jets[jetRegion].slice);
+        sliceLegend->AddEntry(jets[jetRegion].slice, Form("%s Jets", jets[jetRegion].descriptiveName.c_str()));
+    }
+    sliceStack->Draw("nostack");
+    sliceStack->SetTitle(Form("%.0f GeV Profile", 2 * slice_energy)); // TODO Make this independent of binning
+    sliceStack->GetXaxis()->SetTitle("(reco - truth) / truth");
+    sliceStack->GetYaxis()->SetTitle("Counts");
+    sliceLegend->Draw();
+    sliceCanvas->SaveAs("canvas2.png");
+    sliceCanvas->SaveAs("canvas2.c");
+
+
 
     // Some cleanup
     // pft, who needs cleanup

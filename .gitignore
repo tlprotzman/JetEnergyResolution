@@ -19,8 +19,7 @@ macro/eval
 macro/*filelist.txt
 
 # Output
-macro/canvas.png
-macro/canvas.c
+macro/canvas*
 
 # ide settings
 .vscode
