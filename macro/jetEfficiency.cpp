@@ -43,6 +43,11 @@ int readFileList(std::string fileList, std::list<std::string> &list) {
 // pos = [truthEta, truthPhi, recoEta, recoPhi]
 // returns R2 = dEta * dEta + dPhi * dPhi
 float calculateDistance(float *pos) {
+    for (uint8_t i = 0; i < 4; i++) {
+        if (std::isnan(pos[i])) {
+            return 9999;
+        }
+    }
     float dEta, dPhi;
     dEta = pos[0] - pos[2];
     dPhi = pos[1] - pos[3];
@@ -89,14 +94,21 @@ void jetEfficiency(std::string jets = "") {
 
         for (uint32_t i = 0; i < jets->GetEntries(); i++) {
             jets->GetEntry(i);
-            truthEnergy->Fill(truthE);
-            if (std::isnan(truthE) || std::isnan(recoE)) {
+            if (std::isnan(pos[0]) || abs(pos[0]) > 1.5) {
+                continue;
+            }
+            if (std::isnan(truthE)) {
                 continue;
             }
             // Do we filter on R for efficiency? Probably
-            // if (r2 < calculateDistance(pos)) {
-            //     continue;
-            // }
+            
+            truthEnergy->Fill(truthE);
+            if (r2 < calculateDistance(pos)) {
+                continue;
+            }
+            if (std::isnan(truthE) || std::isnan(recoE)) {
+                continue;
+            }
             matchedEnergy->Fill(truthE);
             // std::cout << truthE << "\t" << recoE << std::endl;
             // std::cout << pos[0] << "\t" << pos[1] << std::endl;
