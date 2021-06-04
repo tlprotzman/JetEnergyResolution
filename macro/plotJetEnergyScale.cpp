@@ -117,8 +117,8 @@ void plotJetEnergyScale(std::string centralFileList = "", std::string forwardFil
             jetTree->SetBranchAddress("ge", &truthE);
             jetTree->SetBranchAddress("e", &recoE);
             jetTree->SetBranchAddress("geta", &pos[0]);
-            jetTree->SetBranchAddress("eta", &pos[1]);
-            jetTree->SetBranchAddress("gphi", &pos[2]);
+            jetTree->SetBranchAddress("gphi", &pos[1]);
+            jetTree->SetBranchAddress("eta", &pos[2]);
             jetTree->SetBranchAddress("phi", &pos[3]);
 
 
