@@ -10,7 +10,9 @@ const int CENTRAL = 0;
 const int FORWARD = 1;
 const int BACKWARD = 2;
 
-const int NUM_REGIONS = 3;
+const uint8_t NUM_REGIONS = 3;
+
+// TODO Doing this with iterators could clean things up
 
 class jetData {
     public:
@@ -41,6 +43,7 @@ int readFileList(std::string fileList, std::list<std::string> &list) {
 
 // pos = [truthEta, truthPhi, recoEta, recoPhi]
 // returns R2 = dEta * dEta + dPhi * dPhi
+// Wraps phi 
 float calculateDistance(float *pos) {
     for (uint8_t i = 0; i < 4; i++) {
         if (std::isnan(pos[i])) {
@@ -52,9 +55,11 @@ float calculateDistance(float *pos) {
     dPhi = pos[1] - pos[3];
     if (dPhi > TMath::Pi()) {
         dPhi -= TMath::TwoPi();
+        pos[3] += TMath::TwoPi();
     }
     if (dPhi < -1 * TMath::Pi()) {
         dPhi += TMath::TwoPi();
+        pos[3] -= TMath::TwoPi();
     }
     return dEta *dEta + dPhi * dPhi;
 }
